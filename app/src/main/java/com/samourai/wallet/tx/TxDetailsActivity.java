@@ -1,9 +1,11 @@
 package com.samourai.wallet.tx;
 
 import android.content.Intent;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.customtabs.CustomTabsIntent;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -299,8 +301,20 @@ public class TxDetailsActivity extends AppCompatActivity {
             blockExplorer = "https://blockstream.info/testnet/";
         }
 
-        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(blockExplorer + tx.getHash()));
-        startActivity(browserIntent);
+        CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
+        builder.setStartAnimations(this, R.anim.slide_in_right, R.anim.slide_out_left);
+        builder.setExitAnimations(this, R.anim.slide_in_left, R.anim.slide_out_right);
+
+        builder.setToolbarColor(ContextCompat.getColor(this, R.color.grey_accent));
+
+// set toolbar color and/or setting custom actions before invoking build()
+// Once ready, call CustomTabsIntent.Builder.build() to create a CustomTabsIntent
+        CustomTabsIntent customTabsIntent = builder.build();
+// and launch the desired Url with CustomTabsIntent.launchUrl()
+        customTabsIntent.launchUrl(this, Uri.parse(blockExplorer));
+//
+//        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(blockExplorer + tx.getHash()));
+//        startActivity(browserIntent);
 
     }
 
