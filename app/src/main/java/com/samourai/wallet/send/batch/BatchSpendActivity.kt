@@ -799,7 +799,8 @@ class BatchSpendActivity : SamouraiActivity() {
             } else {
                 rbf = null
             }
-
+            val signedTx = SendFactory.getInstance(application).signTransaction(tx, account)
+            reviewFragment.setFeeRate(fee.toDouble() / signedTx.virtualTransactionSize)
             reviewFragment.setTotalMinerFees(fee)
         }
     }
@@ -808,12 +809,10 @@ class BatchSpendActivity : SamouraiActivity() {
     private fun initiateSpend() {
         val strMessage = "Send ${FormatsUtil.getBTCDecimalFormat(amount.toLong())} BTC. (fee: ${FormatsUtil.getBTCDecimalFormat(fee.toLong())})"
 
-        val _change_address = change_address
         val _change_idx = change_idx
         val _amount = amount
         var SignedTx = SendFactory.getInstance(applicationContext).signTransaction(tx, 0)
         val hexTx = String(Hex.encode(SignedTx.bitcoinSerialize()))
-        val strTxHash = SignedTx.hashAsString
 
         val dlg = MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.app_name)
@@ -822,7 +821,6 @@ class BatchSpendActivity : SamouraiActivity() {
                 .setPositiveButton(R.string.yes, DialogInterface.OnClickListener { dialog, whichButton ->
                     dialog.dismiss()
                     if (!PrefsUtil.getInstance(applicationContext).getValue(PrefsUtil.BROADCAST_TX, true)) {
-//                        doShowTx(hexTx, strTxHash)
                         val dialog = QRBottomSheetDialog(
                                 qrData = hexTx,
                                 title = "",
