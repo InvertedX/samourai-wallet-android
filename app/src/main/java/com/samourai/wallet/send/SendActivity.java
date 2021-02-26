@@ -1,7 +1,6 @@
-package com.samourai.wallet.send;
+ package com.samourai.wallet.send;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -14,7 +13,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.InputFilter;
-import android.text.Selection;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.util.TypedValue;
@@ -28,13 +26,13 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
-import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ViewSwitcher;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.slider.Slider;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.common.base.Splitter;
 import com.samourai.boltzmann.beans.BoltzmannSettings;
@@ -130,6 +128,7 @@ import io.matthewnelson.topl_service.TorServiceController;
 import io.reactivex.Completable;
 import io.reactivex.Observable;
 import io.reactivex.Observer;
+import io.reactivex.Single;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
@@ -149,13 +148,14 @@ public class SendActivity extends SamouraiActivity {
     private SwitchCompat ricochetHopsSwitch, ricochetStaggeredDelivery;
     private ViewGroup totalMinerFeeLayout;
     private SwitchCompat cahootsSwitch;
-    private SeekBar feeSeekBar;
+    private Slider feeSeekBar;
     private Group ricochetStaggeredOptionGroup;
     private boolean shownWalletLoadingMessage = false;
     private long balance = 0L;
     private long selectableBalance = 0L;
     private String strDestinationBTCAddress = null;
     private ProgressBar progressBar;
+    private final DecimalFormat decimalFormatSatPerByte = new DecimalFormat("##");
 
     private final static int FEE_LOW = 0;
     private final static int FEE_NORMAL = 1;
@@ -238,7 +238,6 @@ public class SendActivity extends SamouraiActivity {
         ricochetStaggeredOptionGroup = sendTransactionDetailsView.getTransactionView().findViewById(R.id.ricochet_staggered_option_group);
         tvSelectedFeeRate = sendTransactionDetailsView.getTransactionReview().findViewById(R.id.selected_fee_rate);
         tvSelectedFeeRateLayman = sendTransactionDetailsView.getTransactionReview().findViewById(R.id.selected_fee_rate_in_layman);
-        satbText = sendTransactionDetailsView.getTransactionReview().findViewById(R.id.sat_b);
         tvTotalFee = sendTransactionDetailsView.getTransactionReview().findViewById(R.id.total_fee);
         btnSend = sendTransactionDetailsView.getTransactionReview().findViewById(R.id.send_btn);
         feeSeekBar = sendTransactionDetailsView.getTransactionReview().findViewById(R.id.fee_seekbar);
@@ -337,7 +336,7 @@ public class SendActivity extends SamouraiActivity {
         }
 
 
-    } 
+    }
 
 
     private void setUpCahoots() {
@@ -375,7 +374,7 @@ public class SendActivity extends SamouraiActivity {
                                 break;
                             }
                             default: {
-                                cahootsStatusText.setText(selectedCahootsType.getCahootsType().getLabel()+" "+selectedCahootsType.getCahootsMode().getLabel());
+                                cahootsStatusText.setText(selectedCahootsType.getCahootsType().getLabel() + " " + selectedCahootsType.getCahootsMode().getLabel());
                                 cahootsStatusText.setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.green_ui_2));
 
                                 if (CahootsType.STOWAWAY.equals(selectedCahootsType.getCahootsType())) {
@@ -511,7 +510,6 @@ public class SendActivity extends SamouraiActivity {
     private void setUpFee() {
 
 
-        int multiplier = 10000;
 
         FEE_TYPE = PrefsUtil.getInstance(this).getValue(PrefsUtil.CURRENT_FEE_TYPE, FEE_NORMAL);
 
@@ -521,11 +519,11 @@ public class SendActivity extends SamouraiActivity {
         feeHigh = FeeUtil.getInstance().getHighFee().getDefaultPerKB().longValue() / 1000L;
 
         float high = ((float) feeHigh / 2) + (float) feeHigh;
-        int feeHighSliderValue = (int) (high * multiplier);
-        int feeMedSliderValue = (int) (feeMed * multiplier);
+        int feeHighSliderValue = (int) (high * 10000);
+        int feeMedSliderValue = (int) (feeMed * 10000);
 
-
-        feeSeekBar.setMax(feeHighSliderValue - multiplier);
+        feeSeekBar.setValueTo(feeHighSliderValue);
+        feeSeekBar.setValueFrom(1F);
 
         if (feeLow == feeMed && feeMed == feeHigh) {
             feeLow = (long) ((double) feeMed * 0.85);
@@ -568,91 +566,74 @@ public class SendActivity extends SamouraiActivity {
 
         FeeUtil.getInstance().sanitizeFee();
 
-        tvSelectedFeeRate.setText((String.valueOf((int) feeMed)));
+        tvSelectedFeeRate.setText((String.valueOf((int) feeMed)).concat(" sat/b"));
 
-        feeSeekBar.setProgress((feeMedSliderValue - multiplier) + 1);
-        DecimalFormat decimalFormat = new DecimalFormat("##.##");
-        decimalFormat.setDecimalSeparatorAlwaysShown(false);
+        feeSeekBar.setValue((feeMedSliderValue ) + 1);
         setFeeLabels();
 
-        View.OnClickListener inputFeeListener = v -> {
-            tvSelectedFeeRate.requestFocus();
-            tvSelectedFeeRate.setFocusableInTouchMode(true);
-            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-            assert imm != null;
-            imm.showSoftInput(tvSelectedFeeRate, InputMethodManager.SHOW_FORCED);
-        };
+/*  Disabled custom fee input */
+//        View.OnClickListener inputFeeListener = v -> {
+//            tvSelectedFeeRate.requestFocus();
+//            tvSelectedFeeRate.setFocusableInTouchMode(true);
+//            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+//            assert imm != null;
+//            imm.showSoftInput(tvSelectedFeeRate, InputMethodManager.SHOW_FORCED);
+//        };
 
-        tvSelectedFeeRateLayman.setOnClickListener(inputFeeListener);
-        satbText.setOnClickListener(inputFeeListener);
+//        tvSelectedFeeRateLayman.setOnClickListener(inputFeeListener);
+//        satbText.setOnClickListener(inputFeeListener);
+////
+//        tvSelectedFeeRate.setOnEditorActionListener((v, actionId, event) -> {
+//            try {
+//                int i = (int) ((Double.parseDouble(tvSelectedFeeRate.getText().toString()) * multiplier) - multiplier) - 40;
+//                //feeSeekBar.setMax(feeHighSliderValue - multiplier);
+////                feeSeekBar.setProgress(i);
+//            } catch (NumberFormatException nfe) {
+//                System.out.println("Could not parse " + nfe);
+//            }
+//            ;
+//            return true;
+//        });
 
-        tvSelectedFeeRate.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
 
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                try {
-                    int i = (int) ((Double.parseDouble(tvSelectedFeeRate.getText().toString())*multiplier) - multiplier);
-                    //feeSeekBar.setMax(feeHighSliderValue - multiplier);
-                    feeSeekBar.setProgress(i);
-                } catch(NumberFormatException nfe) {
-                    System.out.println("Could not parse " + nfe);
-                }
-                int position = tvSelectedFeeRate.length();
-                Editable etext = (Editable) tvSelectedFeeRate.getText();
-                Selection.setSelection(etext, position);
-            }
+        feeSeekBar.setStepSize(1F);
+        feeSeekBar.setValueFrom(1F);
+        feeSeekBar.setLabelFormatter(i ->{
+            return tvSelectedFeeRate.getText().toString();
         });
 
-        feeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
-
-                double value = ((double) i + multiplier) / (double) multiplier;
-
-                tvSelectedFeeRate.setText(String.valueOf(decimalFormat.format(value)));
-                if (value == 0.0) {
-                    value = 1.0;
+        feeSeekBar.addOnChangeListener((slider, i, fromUser) -> {
+            double value =(i+10000)/10000 ;
+            if (value == 0.0) {
+                value = 1.0;
+            }
+            if(selectedCahootsType != SelectCahootsType.type.NONE){
+                tvSelectedFeeRate.setText(decimalFormatSatPerByte.format(value).concat(" sat/b"));
+            }
+            double pct = 0.0;
+            int nbBlocks = 6;
+            if (value <= (double) feeLow) {
+                pct = ((double) feeLow / value);
+                nbBlocks = ((Double) Math.ceil(pct * 24.0)).intValue();
+            } else if (value >= (double) feeHigh) {
+                pct = ((double) feeHigh / value);
+                nbBlocks = ((Double) Math.ceil(pct * 2.0)).intValue();
+                if (nbBlocks < 1) {
+                    nbBlocks = 1;
                 }
-                double pct = 0.0;
-                int nbBlocks = 6;
-                if (value <= (double) feeLow) {
-                    pct = ((double) feeLow / value);
-                    nbBlocks = ((Double) Math.ceil(pct * 24.0)).intValue();
-                } else if (value >= (double) feeHigh) {
-                    pct = ((double) feeHigh / value);
-                    nbBlocks = ((Double) Math.ceil(pct * 2.0)).intValue();
-                    if (nbBlocks < 1) {
-                        nbBlocks = 1;
-                    }
-                } else {
-                    pct = ((double) feeMed / value);
-                    nbBlocks = ((Double) Math.ceil(pct * 6.0)).intValue();
-                }
-                tvEstimatedBlockWait.setText(nbBlocks + " blocks");
-                setFee(value);
-                setFeeLabels();
-
-                restoreChangeIndexes();
+            } else {
+                pct = ((double) feeMed / value);
+                nbBlocks = ((Double) Math.ceil(pct * 6.0)).intValue();
             }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-
+            String blocks = nbBlocks + " blocks";
+            if(nbBlocks>50){
+                  blocks = "50+ blocks";
             }
+            tvEstimatedBlockWait.setText(blocks);
+            setFee(value);
+            setFeeLabels();
 
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                restoreChangeIndexes();
-            }
+            restoreChangeIndexes();
         });
 
 
@@ -675,7 +656,7 @@ public class SendActivity extends SamouraiActivity {
     }
 
     private void setFeeLabels() {
-        float sliderValue = (((float) feeSeekBar.getProgress()) / feeSeekBar.getMax());
+        float sliderValue = (feeSeekBar.getValue() / feeSeekBar.getValueTo());
 
         float sliderInPercentage = sliderValue * 100;
 
@@ -690,39 +671,13 @@ public class SendActivity extends SamouraiActivity {
     }
 
     private void setFee(double fee) {
-
-        double sanitySat = FeeUtil.getInstance().getHighFee().getDefaultPerKB().doubleValue() / 1000.0;
-        final long sanityValue;
-        if (sanitySat < 10.0) {
-            sanityValue = 15L;
-        } else {
-            sanityValue = (long) (sanitySat * 1.5);
-        }
-
-        //        String val  = null;
-        double d = FeeUtil.getInstance().getSuggestedFee().getDefaultPerKB().doubleValue() / 1000.0;
-        NumberFormat decFormat = NumberFormat.getInstance(Locale.US);
-        decFormat.setMaximumFractionDigits(3);
-        decFormat.setMinimumFractionDigits(0);
-        double customValue = 0.0;
-
-
-        try {
-            customValue = (double) fee;
-        } catch (Exception e) {
-            Toast.makeText(this, R.string.custom_fee_too_low, Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-
         SuggestedFee suggestedFee = new SuggestedFee();
         suggestedFee.setStressed(false);
         suggestedFee.setOK(true);
-        suggestedFee.setDefaultPerKB(BigInteger.valueOf((long) (customValue * 1000.0)));
+        suggestedFee.setDefaultPerKB(BigInteger.valueOf((long) (fee * 1000.0)));
         FeeUtil.getInstance().setSuggestedFee(suggestedFee);
         prepareSpend();
-
-    }
+     }
 
     private void setUpRicochet() {
         ricochetHopsSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -859,7 +814,7 @@ public class SendActivity extends SamouraiActivity {
 
         tvMaxAmount.setText(strAmount + " " + getDisplayUnits());
 
-        if(!AppUtil.getInstance(getApplication()).isOfflineMode())
+        if (!AppUtil.getInstance(getApplication()).isOfflineMode())
             if (balance == 0L && !APIFactory.getInstance(getApplicationContext()).walletInit) {
                 //some time, user may navigate to this activity even before wallet initialization completes
                 //so we will set a delay to reload balance info
@@ -1279,7 +1234,7 @@ public class SendActivity extends SamouraiActivity {
 
         if (preselectedUTXOs != null) {
             canDoBoltzmann = false;
-            if(SPEND_TYPE == SPEND_BOLTZMANN ){
+            if (SPEND_TYPE == SPEND_BOLTZMANN) {
                 SPEND_TYPE = SPEND_SIMPLE;
             }
         }
@@ -1605,6 +1560,7 @@ public class SendActivity extends SamouraiActivity {
                     byte[] serialized = tx.bitcoinSerialize();
                     Log.d("SendActivity", "size:" + serialized.length);
                     Log.d("SendActivity", "vsize:" + tx.getVirtualTransactionSize());
+                    Log.d("SendActivity", "TXfee:" + tx.getFee());
                     Log.d("SendActivity", "fee:" + fee.longValue());
                     if ((tx.hasWitness() && (fee.longValue() < tx.getVirtualTransactionSize())) || (!tx.hasWitness() && (fee.longValue() < serialized.length))) {
                         Toast.makeText(SendActivity.this, R.string.insufficient_fee, Toast.LENGTH_SHORT).show();
@@ -1679,15 +1635,16 @@ public class SendActivity extends SamouraiActivity {
                 }
             }
 
-            if(account== WhirlpoolConst.WHIRLPOOL_POSTMIX_ACCOUNT){
-                if(SPEND_TYPE == SPEND_SIMPLE){
+            if (account == WhirlpoolConst.WHIRLPOOL_POSTMIX_ACCOUNT) {
+                if (SPEND_TYPE == SPEND_SIMPLE) {
                     strCannotDoBoltzmann = getString(R.string.boltzmann_cannot) + "\n\n";
                 }
             }
             message = strCannotDoBoltzmann + strPrivacyWarning + "Send " + Coin.valueOf(amount).toPlainString() + " to " + dest + " (fee:" + Coin.valueOf(_fee.longValue()).toPlainString() + ")?\n";
 
             if (selectedCahootsType == SelectCahootsType.type.NONE) {
-                tvTotalFee.setText(Coin.valueOf(_fee.longValue()).toPlainString().concat(" BTC"));
+                tvTotalFee.setText(String.format(Locale.ENGLISH, "%.8f", getBtcValue(fee.doubleValue())).concat(" BTC"));
+                calculateTransactionSize(_fee);
             } else {
                 tvTotalFee.setText("__");
             }
@@ -1737,14 +1694,12 @@ public class SendActivity extends SamouraiActivity {
                                 public void onComplete() {
                                 }
                             });
-
-
                     break;
                 }
                 default: {
                     switch (selectedCahootsType.getCahootsType()) {
                         case STONEWALLX2:
-                            sendTransactionDetailsView.showStonewallX2Layout(selectedCahootsType.getCahootsMode(),   getParticipantLabel(),1000);
+                            sendTransactionDetailsView.showStonewallX2Layout(selectedCahootsType.getCahootsMode(), getParticipantLabel(), 1000);
                             btnSend.setBackgroundResource(R.drawable.button_blue);
                             btnSend.setText(getString(R.string.begin_stonewallx2));
                             break;
@@ -1762,6 +1717,8 @@ public class SendActivity extends SamouraiActivity {
                     }
                 }
             }
+
+
             return true;
         }
         return false;
@@ -1783,11 +1740,11 @@ public class SendActivity extends SamouraiActivity {
         } else {
             // resets the changes made for stowaway
             int paddingDp = 12;
-            float density =  getResources().getDisplayMetrics().density;
-            int paddingPixel = (int)(paddingDp * density);
+            float density = getResources().getDisplayMetrics().density;
+            int paddingPixel = (int) (paddingDp * density);
             btnSend.setBackgroundResource(R.drawable.button_green);
             sendTransactionDetailsView.getTransactionReview().findViewById(R.id.transaction_push_icon).setVisibility(View.VISIBLE);
-            btnSend.setPadding(0,paddingPixel,0,0);
+            btnSend.setPadding(0, paddingPixel, 0, 0);
         }
 
     }
@@ -1814,9 +1771,9 @@ public class SendActivity extends SamouraiActivity {
                         prepareSpend();
                         progressBar.setVisibility(View.INVISIBLE);
                         ricochetSpend(ricochetStaggeredDelivery.isChecked());
-                    }, er ->  {
+                    }, er -> {
                         progressBar.setVisibility(View.INVISIBLE);
-                        Toast.makeText(this,"Error ".concat(er.getMessage()),Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, "Error ".concat(er.getMessage()), Toast.LENGTH_LONG).show();
                     });
             compositeDisposables.add(disposable);
             return;
@@ -1894,6 +1851,62 @@ public class SendActivity extends SamouraiActivity {
         }));
 
         builder.create().show();
+
+    }
+
+    private void calculateTransactionSize(BigInteger _fee) {
+            Disposable disposable = Single.fromCallable(() -> {
+
+                final List<MyTransactionOutPoint> outPoints = new ArrayList<>();
+                for (UTXO u : selectedUTXO) {
+                    outPoints.addAll(u.getOutpoints());
+                }
+
+                HashMap<String, BigInteger> _receivers = new HashMap<>(receivers);
+                // add change
+                if (_change > 0L) {
+                    if (SPEND_TYPE == SPEND_SIMPLE) {
+                        if (account == WhirlpoolMeta.getInstance(SendActivity.this).getWhirlpoolPostmix()) {
+                            String change_address = BIP84Util.getInstance(SendActivity.this).getAddressAt(WhirlpoolMeta.getInstance(SendActivity.this).getWhirlpoolPostmix(), AddressFactory.CHANGE_CHAIN, AddressFactory.getInstance(SendActivity.this).getHighestPostChangeIdx()).getBech32AsString();
+                            _receivers.put(change_address, BigInteger.valueOf(_change));
+                        } else if (changeType == 84) {
+                            String change_address = BIP84Util.getInstance(SendActivity.this).getAddressAt(AddressFactory.CHANGE_CHAIN, BIP84Util.getInstance(SendActivity.this).getWallet().getAccount(0).getChange().getAddrIdx()).getBech32AsString();
+                            _receivers.put(change_address, BigInteger.valueOf(_change));
+                        } else if (changeType == 49) {
+                            String change_address = BIP49Util.getInstance(SendActivity.this).getAddressAt(AddressFactory.CHANGE_CHAIN, BIP49Util.getInstance(SendActivity.this).getWallet().getAccount(0).getChange().getAddrIdx()).getAddressAsString();
+                            _receivers.put(change_address, BigInteger.valueOf(_change));
+                        } else {
+                            String change_address = HD_WalletFactory.getInstance(SendActivity.this).get().getAccount(0).getChange().getAddressAt(HD_WalletFactory.getInstance(SendActivity.this).get().getAccount(0).getChange().getAddrIdx()).getAddressString();
+                            _receivers.put(change_address, BigInteger.valueOf(_change));
+                        }
+
+                    } else if (SPEND_TYPE == SPEND_BOLTZMANN) {
+                        // do nothing, change addresses included
+                        ;
+                    } else {
+                        ;
+                    }
+                }
+
+                final Transaction tx = SendFactory.getInstance(getApplication()).makeTransaction(account,
+                        outPoints, _receivers);
+                final Transaction signedTx = SendFactory.getInstance(getApplication()).signTransaction(tx, account);
+                restoreChangeIndexes();
+                return signedTx;
+            })
+                    .subscribeOn(Schedulers.computation())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe((transaction, throwable) -> {
+                        if (throwable == null && transaction != null) {
+                            decimalFormatSatPerByte.setDecimalSeparatorAlwaysShown(false);
+                            tvSelectedFeeRate.setText(decimalFormatSatPerByte.format(_fee.doubleValue() / transaction.getVirtualTransactionSize()).concat(" sat/b"));
+                        }else{
+                            tvSelectedFeeRate.setText("_");
+                        }
+                    });
+
+            compositeDisposables.add(disposable);
+
 
     }
 
@@ -2028,7 +2041,7 @@ public class SendActivity extends SamouraiActivity {
         strDestinationBTCAddress = null;
         if (data.contains("https://bitpay.com")) {
 
-          MaterialAlertDialogBuilder dlg = new MaterialAlertDialogBuilder(this)
+            MaterialAlertDialogBuilder dlg = new MaterialAlertDialogBuilder(this)
                     .setTitle(R.string.app_name)
                     .setMessage(R.string.no_bitpay)
                     .setCancelable(false)

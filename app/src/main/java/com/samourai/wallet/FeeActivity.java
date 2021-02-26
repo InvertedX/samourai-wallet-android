@@ -71,7 +71,6 @@ public class FeeActivity extends SamouraiActivity {
         selectedFeeLayman = findViewById(R.id.selected_fee_rate_in_layman);
         totalMinerFee.setVisibility(View.INVISIBLE);
         totalFeeText.setVisibility(View.INVISIBLE);
-        satbText = findViewById(R.id.sat_b);
 
         btOK = findViewById(R.id.ok);
         btOK.setOnClickListener(v -> {
