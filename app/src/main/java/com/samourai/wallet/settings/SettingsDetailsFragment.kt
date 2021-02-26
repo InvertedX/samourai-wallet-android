@@ -24,6 +24,7 @@ import androidx.transition.Transition
 import com.dm.zbar.android.scanner.ZBarConstants
 import com.dm.zbar.android.scanner.ZBarScannerActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import com.samourai.wallet.*
 import com.samourai.wallet.access.AccessFactory
 import com.samourai.wallet.cahoots.psbt.PSBTUtil
@@ -241,7 +242,7 @@ class SettingsDetailsFragment(private val key: String?) : PreferenceFragmentComp
                                         if (AccessFactory.getInstance(requireContext()).validateHash(hash, AccessFactory.getInstance(requireContext()).guid, CharSequenceX(_pin), AESUtil.DefaultPBKDF2Iterations)) {
                                             val pin = EditText(requireContext())
                                             pin.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-                                            AlertDialog.Builder(requireContext())
+                                            MaterialAlertDialogBuilder(requireContext())
                                                     .setTitle(R.string.app_name)
                                                     .setMessage(R.string.pin_5_8)
                                                     .setView(pin)
@@ -280,15 +281,17 @@ class SettingsDetailsFragment(private val key: String?) : PreferenceFragmentComp
                                                                             } finally {
                                                                                 Toast.makeText(requireContext().getApplicationContext(), R.string.success_change_pin, Toast.LENGTH_SHORT).show()
                                                                             }
+                                                                        }else{
+                                                                            view?.let { it1 -> Snackbar.make(it1, getString(R.string.pin_does_not_match),Snackbar.LENGTH_LONG).show() }
                                                                         }
                                                                     }.setNegativeButton(R.string.cancel) { dialog, whichButton -> }.show()
                                                         }
                                                     }.setNegativeButton(R.string.cancel) { dialog, whichButton -> }.show()
                                         } else {
-                                            Toast.makeText(requireContext().getApplicationContext(), R.string.pin_error, Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(requireContext().applicationContext, R.string.pin_error, Toast.LENGTH_SHORT).show()
                                         }
                                     } else {
-                                        Toast.makeText(requireContext().getApplicationContext(), R.string.pin_error, Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(requireContext().applicationContext, R.string.pin_error, Toast.LENGTH_SHORT).show()
                                     }
                                 }.setNegativeButton(R.string.cancel) { dialog, whichButton -> }.show()
                     }.setNegativeButton(R.string.no) { dialog, whichButton -> }.show()
