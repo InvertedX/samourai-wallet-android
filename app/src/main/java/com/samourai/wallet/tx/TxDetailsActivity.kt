@@ -43,6 +43,7 @@ import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.*
 import org.bitcoinj.core.Coin
+import org.bitcoinj.core.Transaction
 import org.json.JSONException
 import org.json.JSONObject
 import java.text.DecimalFormat
@@ -305,8 +306,8 @@ class TxDetailsActivity : SamouraiActivity() {
         if (jsonObject.has("fees")) {
             minerFee!!.text = jsonObject.getString("fees") + " sats"
         }
-        if (jsonObject.has("feerate")) {
-            minerFeeRate!!.text = jsonObject.getString("feerate") + " sats"
+        if (jsonObject.has("vfeerate")) {
+            minerFeeRate!!.text = jsonObject.getString("vfeerate") + " sats"
         }
     }
 
